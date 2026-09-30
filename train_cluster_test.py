@@ -56,7 +56,7 @@ class ReftHyperparameters:
     lambda_consistency: float = 0.01
     output_dir: str = "reft_results"
     cluster_method: str = "kmeans"
-    cluster_indices_path: str = "reft_results/cluster_info.json"
+    cluster_indices_path: str = "./cluster_index/unke/unke_v3_3_hac_maxsize8.json"
     save_weights_dir: str = None
 
 
@@ -177,10 +177,7 @@ def Reft_train(config):
     batch_sequences = [f"{a}" for a in edit_answers]
     batch_rephrase_questions = [tokenizer.apply_chat_template([{"role": "user", "content": f"{q}"}], tokenize=False) for q in edit_rephrase_questions]
     
-    cluster_indices_path = "./outputs/activation/unke/unke_3_hac_test_extended.json"
-    
-    
-
+    cluster_indices_path = config.cluster_indices_path
 
     print(f"Loading cluster indices from {cluster_indices_path}")
     with open(cluster_indices_path, 'r') as f:
@@ -469,7 +466,7 @@ def Reft_train(config):
         for result in all_results:
             f.write(json.dumps(result) + "\n")
     
-    print(f"Saving cluster information to reft_results/cluster_info.json...")
+    print(f"Saving cluster information to {config.cluster_indices_path}...")
   
 
 
@@ -492,7 +489,7 @@ if __name__ == "__main__":
     parser.add_argument("--rank", type=int, default=8)
     parser.add_argument("--output_dir", type=str, default="reft_results")
     parser.add_argument("--cluster_method", type=str, default="kmeans")
-    parser.add_argument("--cluster_indices_path", type=str, default="reft_results/cluster_info.json")
+    parser.add_argument("--cluster_indices_path", type=str, default="./cluster_index/unke/unke_v3_3_hac_maxsize8.json")
     parser.add_argument("--save_weights_dir", type=str, default=None)
     
     args = parser.parse_args()

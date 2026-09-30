@@ -7,7 +7,6 @@ import json
 import torch
 from datasets import load_dataset, Dataset
 import transformers
-import pdb
 
 
 random.seed(42)
@@ -32,7 +31,7 @@ class AnyEditForDirectOpt:
         self.dataset = self.get_dataset()
 
     def get_dataset(self):
-        raw_dataset = json.load(open("../datasets/editevery/editevery_para.json"))
+        raw_dataset = json.load(open("datasets/editevery/editevery_para.json"))
       
         edit_dict = {"question": [], "para_question": [], "answer": []}
         for i in range(len(raw_dataset)):

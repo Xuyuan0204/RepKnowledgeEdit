@@ -7,7 +7,6 @@ import json
 import torch
 from datasets import load_dataset, Dataset
 import transformers
-import pdb
 
 
 random.seed(42)
@@ -32,13 +31,39 @@ class UnkeForDirectOpt:
         self.dataset = self.get_dataset()
 
     def get_dataset(self):
-        raw_dataset = json.load(open("../datasets/UnKE/final_data_v3.json"))
-      
+        raw_dataset = json.load(open("datasets/UnKE/final_data_v2.json"))
+
         edit_dict = {"question": [], "para_question": [], "answer": []}
         for i in range(len(raw_dataset)):
             for k in edit_dict:
                 edit_dict[k].append(raw_dataset[i][k])
-        edit_dataset = Dataset.from_dict(edit_dict) 
+        edit_dataset = Dataset.from_dict(edit_dict)
+
+        return edit_dataset
+
+    def get_dataset_v3(self):
+        raw_dataset = json.load(open("datasets/UnKE/final_data_v3.json"))
+
+        edit_dict = {"question": [], "para_question": [], "answer": []}
+        for i in range(len(raw_dataset)):
+            for k in edit_dict:
+                edit_dict[k].append(raw_dataset[i][k])
+        edit_dataset = Dataset.from_dict(edit_dict)
+
+        return edit_dataset
+
+    def get_dataset_mmlu(self):
+        raw_dataset = []
+        with open("datasets/UnKE/mmlu_shot.jsonl", "r") as f:
+            for line in f:
+                raw_dataset.append(json.loads(line.strip()))
+
+        edit_dict = {"mmlu_questions": [], "mmlu_answer": [], "mmlu_choices": []}
+        for item in raw_dataset:
+            edit_dict["mmlu_questions"].append(item["question"])
+            edit_dict["mmlu_answer"].append(item["answer"])
+            edit_dict["mmlu_choices"].append(item["choices"])
+        edit_dataset = Dataset.from_dict(edit_dict)
 
         return edit_dataset
 

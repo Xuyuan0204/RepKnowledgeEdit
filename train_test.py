@@ -108,19 +108,23 @@ def compute_similarity_with_activations(query_embedding, activation_embeddings):
 def load_reft_adapter(reft_model, adapter_weights_dir, adapter_idx, device, config):
     """Load specific adapter weights into the ReFT model"""
     adapter_path = os.path.join(adapter_weights_dir, f"adapter_{adapter_idx}")
-    
+
     if not os.path.exists(adapter_path):
         raise FileNotFoundError(f"Adapter directory not found: {adapter_path}")
-    
-    # Load intervention weights - reuse existing loading function
+
+    if "qwen" in config.model_name.lower():
+        component = f"model.layers[{config.target_layer}].output"
+    else:
+        component = "block_output"
+
     reft_config = ReftConfig(representations={
-        "layer": config.target_layer, "component": "block_output",
+        "layer": config.target_layer, "component": component,
         "intervention": LoreftIntervention(
         embed_dim=reft_model.model.config.hidden_size,
         low_rank_dimension=config.rank)})
-    
+
     load_intervention_weights_loreft(reft_model, adapter_path, device, reft_config)
-    
+
     return reft_model
 
 def get_config(args):
@@ -177,7 +181,10 @@ def Reft_train(config):
         edit_dataset = Dataset.from_dict(edit_data)
 
     # Set num_samples to full dataset size for batch training
-    config.num_samples = args.num_samples
+    if args.num_samples is not None:
+        config.num_samples = args.num_samples
+    else:
+        config.num_samples = len(edit_dataset)
     sample_indices = range(config.num_samples)
     print(f"Training on dataset with {config.num_samples} samples")
 
@@ -201,11 +208,16 @@ def Reft_train(config):
     tokenizer.pad_token = tokenizer.unk_token
 
     # get reft model
+    if "qwen" in config.model_name.lower():
+        component = f"model.layers[{config.target_layer}].output"
+    else:
+        component = "block_output"
+
     if config.adv_train_method == "Explicit":
         print("Using Explicit ReFT")
         act_fn = None
         reft_config = ReftConfig(representations={
-            "layer": config.target_layer, "component": "block_output",
+            "layer": config.target_layer, "component": component,
             "intervention": LoreftIntervention_Explicit(
                 embed_dim=model.config.hidden_size,
                 low_rank_dimension=config.rank,
@@ -216,7 +228,7 @@ def Reft_train(config):
     elif config.adv_train_method == "Implicit":
         print("Using Implicit ReFT")
         reft_config = ReftConfig(representations={
-            "layer": config.target_layer, "component": "block_output",
+            "layer": config.target_layer, "component": component,
             "intervention": LoreftIntervention_Implicit(
                 embed_dim=model.config.hidden_size,
                 low_rank_dimension=config.rank,
@@ -226,19 +238,19 @@ def Reft_train(config):
     elif config.adv_train_method == "Adv_Explicit":
         print("Using Adversarial Explicit ReFT")
         reft_config = ReftConfig(representations={
-            "layer": config.target_layer, "component": "block_output",
+            "layer": config.target_layer, "component": component,
             "intervention": LoreftIntervention_Adv_Explicit(
                 embed_dim=model.config.hidden_size,
                 low_rank_dimension=config.rank,
                 dropout_rate=config.drop_out,
-                adv_epsilon=config.adv_epsilon,    
-                adv_steps=config.adv_steps,           
-                adv_norm=config.adv_norm,          
+                adv_epsilon=config.adv_epsilon,
+                adv_steps=config.adv_steps,
+                adv_norm=config.adv_norm,
                 init_noise_std=config.noise_std
             )})
     elif config.adv_train_method == "Vanilla":
         reft_config = ReftConfig(representations={
-            "layer": config.target_layer, "component": "block_output",
+            "layer": config.target_layer, "component": component,
             "intervention": LoreftIntervention(
                 embed_dim=model.config.hidden_size,
                 low_rank_dimension=config.rank,
@@ -260,7 +272,7 @@ def Reft_train(config):
     # batch_triggers = edit_questions
     batch_sequences = [f"{a}" for a in edit_answers]
     
-    if config.dataset == "unke" or "anyedit":
+    if config.dataset in ("unke", "unke_v3", "anyedit"):
         batch_rephrase_questions = [tokenizer.apply_chat_template([{"role": "user", "content": f"{q}"}], tokenize=False) for q in edit_rephrase_questions]
     else:
         batch_rephrase_questions = []
@@ -449,8 +461,13 @@ def Reft_test(config):
 
     # Initialize ReFT model structure (without loading specific weights yet)
     print("Initializing ReFT model structure...")
+    if "qwen" in config.model_name.lower():
+        component = f"model.layers[{config.target_layer}].output"
+    else:
+        component = "block_output"
+
     reft_config = ReftConfig(representations={
-        "layer": config.target_layer, "component": "block_output",
+        "layer": config.target_layer, "component": component,
         "intervention": LoreftIntervention(
         embed_dim=model.config.hidden_size,
         low_rank_dimension=config.rank)})
@@ -555,14 +572,14 @@ def Reft_test(config):
             res_dict["aligned"] = aligned
 
         results.append(res_dict)
-        wandb.log({
-            "data_idx": data_idx,
-            "rouge_score": rouge_score,
-            "rephrased_rouge_score": rouge_score_rephrase,
-            "bert_score": bert_score,
-            "rephrased_bert_score": bert_score_rephrase
-        })
-        results.append(res_dict)
+        if config.record:
+            wandb.log({
+                "data_idx": data_idx,
+                "rouge_score": rouge_score,
+                "rephrased_rouge_score": rouge_score_rephrase,
+                "bert_score": bert_score,
+                "rephrased_bert_score": bert_score_rephrase
+            })
     
     
 

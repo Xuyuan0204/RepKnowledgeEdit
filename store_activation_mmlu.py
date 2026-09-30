@@ -11,8 +11,6 @@ import yaml
 from datasets import load_dataset, Dataset, concatenate_datasets
 from peft import get_peft_model, LoraConfig
 from torch.utils.data import DataLoader
-from src.models.adapter import INRELEVANT_LABEL, UNLEARN_LABEL, EDIT_LABEL
-
 from tqdm import tqdm
 from transformers import AutoModel,AutoTokenizer
 from transformers.models.llama.modeling_llama import LlamaDecoderLayer

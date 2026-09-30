@@ -88,7 +88,7 @@ class ReftHyperparameters:
     rephrased_query_activation_path: str = "./activation/unke/llama_3_8b_layer15_no_answer_last_rephrased.pt"
     save_path: str = "vanilla_unke"
     similarity_threshold: float = 0.8  # threshold for using intervention vs vanilla model
-    cluster_indices_path: str = "./outputs/activation/unke/unke_hac_similarity0.9_maxsize8_clusters_no_answer_last.json"
+    cluster_indices_path: str = "./cluster_index/unke/unke_v3_3_hac_maxsize8.json"
 
 
 def mmlu_question(que, choices, tokenizer):
@@ -288,7 +288,7 @@ if __name__ == "__main__":
     parser.add_argument("--rephrased_query_activation_path", type=str, default="./activation/unke_v3/llama_3_8b_layer15_no_answer_last_rephrased.pt")
     parser.add_argument("--save_path", type=str, default="vanilla_unke")
     parser.add_argument("--similarity_threshold", type=float, default=0.8)
-    parser.add_argument("--cluster_indices_path", type=str, default="./outputs/activation/unke/unke_hac_similarity0.9_maxsize8_clusters_no_answer_last.json")
+    parser.add_argument("--cluster_indices_path", type=str, default="./cluster_index/unke/unke_v3_3_hac_maxsize8.json")
 
 
     args = parser.parse_args()

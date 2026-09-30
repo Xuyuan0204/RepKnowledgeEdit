@@ -214,7 +214,7 @@ def Reft_train(config):
     # batch_triggers = edit_questions
     batch_sequences = [f"{a}" for a in edit_answers]
     
-    if config.dataset == "unke" or "anyedit":
+    if config.dataset in ("unke", "unke_v3", "anyedit"):
         batch_rephrase_questions = [tokenizer.apply_chat_template([{"role": "user", "content": f"{q}"}], tokenize=False) for q in edit_rephrase_questions]
     else:
         batch_rephrase_questions = []

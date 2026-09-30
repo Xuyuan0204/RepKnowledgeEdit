@@ -12,7 +12,6 @@ from datasets import load_dataset, Dataset, concatenate_datasets
 from peft import get_peft_model, LoraConfig
 from torch.utils.data import DataLoader
 import evaluate
-import pdb
 from tqdm import tqdm
 from transformers import AutoModel,AutoTokenizer
 from transformers.models.llama.modeling_llama import LlamaDecoderLayer
@@ -282,7 +281,8 @@ def store_activations(model_name="meta-llama/Llama-3.1-8B-Instruct", dataset_nam
     if not os.path.exists(stored_folder):
         os.makedirs(stored_folder)
 
-    stored_path=stored_folder+f"llama_3_8b_layer{Target_layer}_no_answer_last_{data_src}.pt"
+    model_prefix = "qwen_2_5_7b" if "qwen" in model_name.lower() else "llama_3_8b"
+    stored_path=stored_folder+f"{model_prefix}_layer{Target_layer}_no_answer_last_{data_src}.pt"
     print("Length of res_inference",len(res_inference))
     torch.save(res_inference,stored_path)
     
@@ -290,10 +290,12 @@ def store_activations(model_name="meta-llama/Llama-3.1-8B-Instruct", dataset_nam
 if __name__ == "__main__":
     # store_activations(dataset_name="anyedit", only_question=True, data_src="rephrased")
     # store_activations(dataset_name="anyedit", only_question=True, data_src="original")
-    argparse = argparse.ArgumentParser()
-    argparse.add_argument("--dataset_name", type=str, default="unke_v3")
-    argparse.add_argument("--only_question", type=bool, default=True)
-    argparse.add_argument("--data_src", type=str, default="original")
-    argparse.add_argument("--model_name", type=str, default="meta-llama/Llama-3.1-8B-Instruct")
-    args = argparse.parse_args()
-    store_activations(model_name=args.model_name, dataset_name=args.dataset_name, only_question=args.only_question, data_src
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset_name", type=str, default="unke_v3")
+    parser.add_argument("--only_question", type=bool, default=True)
+    parser.add_argument("--data_src", type=str, default="original")
+    parser.add_argument("--model_name", type=str, default="meta-llama/Llama-3.1-8B-Instruct")
+    parser.add_argument("--target_layer", type=int, default=15)
+    args = parser.parse_args()
+    Target_layer = args.target_layer
+    store_activations(model_name=args.model_name, dataset_name=args.dataset_name, only_question=args.only_question, data_src=args.data_src)

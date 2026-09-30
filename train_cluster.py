@@ -56,7 +56,7 @@ class ReftHyperparameters:
     lambda_consistency: float = 0.01
     output_dir: str = "reft_results"
     cluster_method: str = "kmeans"
-    cluster_indices_path: str = "reft_results/cluster_info.json"
+    cluster_indices_path: str = "./cluster_index/unke/unke_v3_3_hac_maxsize8.json"
     save_weights_dir: str = None
 
 
@@ -181,10 +181,7 @@ def Reft_train(config):
     batch_sequences = [f"{a}" for a in edit_answers]
     batch_rephrase_questions = [tokenizer.apply_chat_template([{"role": "user", "content": f"{q}"}], tokenize=False) for q in edit_rephrase_questions]
     
-    cluster_indices_path = "./outputs/activation/unke/unke_3_hac_similarity0.9_maxsize8_clusters_no_answer_last.json"
-    
-    
-
+    cluster_indices_path = config.cluster_indices_path
 
     print(f"Loading cluster indices from {cluster_indices_path}")
     with open(cluster_indices_path, 'r') as f:
@@ -434,7 +431,6 @@ def Reft_train(config):
             
             adapter_dir = os.path.join(weights_store, f"adapter_{cluster_idx}")
             os.makedirs(adapter_dir, exist_ok=True)
-            breakpoint()
             for module_key, intervention in reft_model.interventions.items():
                 if hasattr(intervention, 'state_dict'):
                     adapter_weights = intervention.state_dict()
@@ -452,14 +448,14 @@ def Reft_train(config):
     print(f"Overall Statistics:")
     print(f"  Total clusters processed: {len(cluster_info)}")
     print(f"  Total data points trained: {len(all_results)}")
-    print(f"  Average Original Rouge-L: {sum(original_scores)/len(original_scores):.3f}")
+    print(f"  Average Original Rouge-L: {sum(rouge_scores)/len(rouge_scores):.3f}")
     print(f"  Average Rephrased Rouge-L: {sum(rephrased_scores)/len(rephrased_scores):.3f}")
-    
+
     if config.record:
         wandb.log({
             "total_clusters": len(cluster_info),
             "total_data_points": len(all_results),
-            "final_avg_original_rouge": sum(original_scores)/len(original_scores),
+            "final_avg_original_rouge": sum(rouge_scores)/len(rouge_scores),
             "final_avg_rephrased_rouge": sum(rephrased_scores)/len(rephrased_scores),
         })
 
@@ -468,7 +464,7 @@ def Reft_train(config):
     with open(f"reft_results/{config.output_dir}/results.jsonl", "w") as f:
         for result in all_results:
             f.write(json.dumps(result) + "\n")
-    print(f"Saving cluster information to reft_results/cluster_info.json...")
+    print(f"Saving cluster information to {config.cluster_indices_path}...")
   
 
 
@@ -491,7 +487,7 @@ if __name__ == "__main__":
     parser.add_argument("--rank", type=int, default=8)
     parser.add_argument("--output_dir", type=str, default="reft_results")
     parser.add_argument("--cluster_method", type=str, default="kmeans")
-    parser.add_argument("--cluster_indices_path", type=str, default="reft_results/cluster_info.json")
+    parser.add_argument("--cluster_indices_path", type=str, default="./cluster_index/unke/unke_v3_3_hac_maxsize8.json")
     parser.add_argument("--save_weights_dir", type=str, default=None)
     
     args = parser.parse_args()

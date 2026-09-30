@@ -4,7 +4,7 @@ python train_test.py \
  --record True  \
  --adv_train_method Explicit \
  --wandb_project unke_single_qwen \
- --output_dir single_explicit_unke --rank 4 \
+ --output_dir single_explicit_unke \
  --epochs 1000  \
  --noise_std 0.002 \
  --drop_out 0.05 \

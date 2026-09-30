@@ -294,7 +294,7 @@ class LoreftIntervention_Explicit(
         return state_dict
 
     def load_state_dict(self, state_dict, *args, **kwargs):
-       self.learned_source.load_state_dict(state_dict, strict=False)
+        self.learned_source.load_state_dict(state_dict, strict=False)
 
         overload_w = state_dict["rotate_layer"].to(
             self.learned_source.weight.device)

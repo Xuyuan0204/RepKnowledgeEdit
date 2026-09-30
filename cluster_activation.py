@@ -12,7 +12,6 @@ from datasets import load_dataset, Dataset, concatenate_datasets
 from peft import get_peft_model, LoraConfig
 from torch.utils.data import DataLoader
 import evaluate
-import pdb
 from tqdm import tqdm
 from transformers import AutoModel,AutoTokenizer
 from transformers.models.llama.modeling_llama import LlamaDecoderLayer
@@ -71,7 +70,7 @@ def preprocess_only_question(example,tokenizer,dataset_name):
             results["label"].append(1)
         return results
     
-    elif dataset_name == "unke" or dataset_name == "wiki" or dataset_name == "anyedit":
+    elif dataset_name == "unke" or dataset_name == "unke_v3" or dataset_name == "wiki" or dataset_name == "anyedit":
         for i in range(len(example["question"])):
             question = example["question"][i]
             messages = [
@@ -161,14 +160,14 @@ class GetHookedValue:
     
 
 
-def cluster_activations(dataset_name="wiki",method="cluster", only_question=False):
+def cluster_activations(dataset_name="wiki",method="cluster", only_question=False, model_name="meta-llama/Llama-3.1-8B-Instruct"):
 
 
-    
-    model_name = "Qwen/Qwen2.5-7B-Instruct"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     if dataset_name == "unke":
         edit_dataset = UnkeForDirectOpt().get_dataset()
+    elif dataset_name == "unke_v3":
+        edit_dataset = UnkeForDirectOpt().get_dataset_v3()
     elif dataset_name == "wiki":
         edit_dataset = WikiForDirectOpt().get_dataset()
     elif dataset_name == "counterfact":
@@ -191,13 +190,20 @@ def cluster_activations(dataset_name="wiki",method="cluster", only_question=Fals
 
     res_inference=Hook.inference(dataset, cal_type="last")
 
-    stored_folder=f"outputs/activation/{dataset_name}/"
+    stored_folder=f"output/{dataset_name}/"
     if not os.path.exists(stored_folder):
         os.makedirs(stored_folder)
 
-    stored_path=stored_folder+f"qwen_2_5_7b_layer{Target_layer}_no_answer_last.pt"
+    model_prefix = "qwen_2_5_7b" if "qwen" in model_name.lower() else "llama_3_8b"
+    stored_path=stored_folder+f"{model_prefix}_layer{Target_layer}_no_answer_last.pt"
 
     torch.save(res_inference,stored_path)
+
+    # Canonical cluster-index location shared with train_cluster.py / test_cluster_rep.py
+    dataset_dir = dataset_name.replace("_v3", "")
+    cluster_out_folder = f"cluster_index/{dataset_dir}/"
+    if not os.path.exists(cluster_out_folder):
+        os.makedirs(cluster_out_folder)
     if method=="cluster":
 
         print("Applying KMeans clustering...")
@@ -227,7 +233,7 @@ def cluster_activations(dataset_name="wiki",method="cluster", only_question=Fals
                 cluster_indices[cluster_id] = []
             cluster_indices[cluster_id].append(idx)
 
-        cluster_indices_path = stored_folder + f"kmeans_clusters_{cluster_num}_last_with_answer.json"
+        cluster_indices_path = cluster_out_folder + f"{dataset_name}_3_kmeans_k{cluster_num}.json"
         with open(cluster_indices_path, 'w') as f:
             json.dump(cluster_indices, f, indent=2)
 
@@ -353,11 +359,10 @@ def cluster_activations(dataset_name="wiki",method="cluster", only_question=Fals
                 final_cluster_indices[cluster_counter] = indices
                 cluster_counter += 1
         
-        # Save cluster indices to JSON file
-        cluster_indices_path = stored_folder + f"{dataset_name}_3_hac_similarity{tau}_maxsize{max_cluster_size}_clusters_no_answer_last_qwen2_5.json"
+        cluster_indices_path = cluster_out_folder + f"{dataset_name}_3_hac_maxsize{max_cluster_size}.json"
         with open(cluster_indices_path, 'w') as f:
             json.dump(final_cluster_indices, f, indent=2)
-        
+
         print(f"HAC clustering completed. Cluster indices saved to: {cluster_indices_path}")
         print(f"Total clusters: {len(final_cluster_indices)} (split {large_clusters_count} large clusters)")
         print(f"Cluster distribution:")
@@ -379,4 +384,5 @@ def cluster_activations(dataset_name="wiki",method="cluster", only_question=Fals
 
 if __name__ == "__main__":
 
-    cluster_activations(dataset_name="unke",method="hac", only_question=True)
+    cluster_activations(dataset_name="unke_v3", method="hac", only_question=True,
+                        model_name="meta-llama/Llama-3.1-8B-Instruct")
