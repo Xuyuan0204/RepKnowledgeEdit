@@ -87,7 +87,7 @@ class ReftHyperparameters:
     original_query_activation_path: str = "./activation/unke/llama_3_8b_layer15_no_answer_last_original.pt"
     rephrased_query_activation_path: str = "./activation/unke/llama_3_8b_layer15_no_answer_last_rephrased.pt"
     save_path: str = "vanilla_unke"
-    similarity_threshold: float = 0.5  # threshold for using intervention vs vanilla model
+    similarity_threshold: float = 0.9  # threshold for using intervention vs vanilla model
 
 def mmlu_question(que, choices, tokenizer):
     """Format MMLU question with multiple choice options for batch processing"""
@@ -213,7 +213,7 @@ def evaluate_rep(config):
                 do_sample=False, 
                 eos_token_id=tokenizer.eos_token_id, 
                 early_stopping=True,
-                temperature=0.3
+                temperature=0.001
             )
             generated_text = tokenizer.decode(steered_response[0][len(test_prompt_tokens["input_ids"][0]):], skip_special_tokens=True)
             used_intervention = True

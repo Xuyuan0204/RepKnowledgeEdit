@@ -92,8 +92,8 @@ python no_batched_train.py \
   --model_name meta-llama/Llama-3.1-8B-Instruct \
   --rank 4 \
   --epochs 1000 \
-  --learning_rate 2e-2 \
-  --noise_std 0.005 \
+  --learning_rate 1e-2 \
+  --noise_std 0.02 \
   --lambda_consistency 0.001 \
   --save_weights_dir single_unke_llama \
   --record True \
@@ -171,9 +171,9 @@ The clustering uses `tau=0.9` (cosine similarity threshold) and `max_cluster_siz
 python train_cluster.py \
   --dataset unke_v3 \
   --adv_train_method Explicit \
-  --learning_rate 2e-2 \
+  --learning_rate 1e-2 \
   --drop_out 0.01 \
-  --noise_std 0.005 \
+  --noise_std 0.02 \
   --lambda_consistency 0.001 \
   --batch_size 8 \
   --rank 4 \
@@ -200,68 +200,6 @@ python test_cluster_rep.py \
   --cluster_indices_path ./cluster_index/unke/unke_v3_3_hac_maxsize8.json \
   --save_path cluster_unke_results
 ```
-
----
-
-## MMLU Evaluation (General Utility Preservation)
-
-RILKE uses a similarity-threshold router to preserve general capabilities: the intervention is applied only when the query's activation similarity to training data exceeds a threshold; otherwise, the vanilla model is used.
-
-```bash
-# Step 1: Store MMLU activations
-python store_activation_mmlu.py
-
-# Step 2: Evaluate (individual setting)
-python mmlu_eval.py \
-  --model_name meta-llama/Llama-3.1-8B-Instruct \
-  --adapter_weights_dir ./Stored_weights/single_unke_1000 \
-  --activation_path ./activation/unke_v3/llama_3_8b_layer15_no_answer_last_original.pt \
-  --similarity_threshold 0.9
-
-# Step 2 (alternative): Evaluate (clustered setting)
-python mmlu_eval_cluster.py \
-  --model_name meta-llama/Llama-3.1-8B-Instruct \
-  --adapter_weights_dir ./Stored_weights/unke_explicit_llama_cluster \
-  --activation_path ./activation/unke_v3/llama_3_8b_layer15_no_answer_last_original.pt \
-  --cluster_indices_path ./cluster_index/unke/unke_v3_3_hac_maxsize8.json \
-  --similarity_threshold 0.8
-```
-
----
-
-## Supported Models
-
-| Model | Config Key |
-|---|---|
-| Meta LLaMA-3.1-8B-Instruct | `meta-llama/Llama-3.1-8B-Instruct` |
-| Qwen2.5-7B-Instruct | `Qwen/Qwen2.5-7B-Instruct` |
-
----
-
-## Datasets
-
-| Dataset | Description | Path |
-|---|---|---|
-| UnKE v3 | Knowledge editing benchmark | `datasets/UnKE/final_data_v3.json` |
-| UnKE v2 | Earlier version | `datasets/UnKE/final_data_v2.json` |
-| AnyEdit | General-purpose editing | `datasets/editevery/editevery_para.json` |
-| MMLU | General utility evaluation | `datasets/UnKE/mmlu_shot.jsonl` |
-
----
-
-## Key Hyperparameters
-
-| Argument | Default | Description |
-|---|---|---|
-| `--rank` | 4 | Low-rank dimension of the intervention module |
-| `--target_layer` | 15 | Transformer layer to intervene on |
-| `--epochs` | 1000 | Training epochs per module |
-| `--learning_rate` | 2e-2 | Learning rate |
-| `--noise_std` | 0.005 | Noise magnitude for explicit regularization |
-| `--drop_out` | 0.05 | Dropout rate in intervention module |
-| `--lambda_consistency` | 0.001 | Weight for consistency/adversarial loss |
-| `--adv_train_method` | `Explicit` | Training variant (Vanilla, Explicit, Implicit, Adv_Explicit) |
-| `--similarity_threshold` | 0.9 | Router threshold for MMLU (apply intervention only above this) |
 
 ---
 

@@ -87,7 +87,7 @@ class ReftHyperparameters:
     original_query_activation_path: str = "./activation/unke/llama_3_8b_layer15_no_answer_last_original.pt"
     rephrased_query_activation_path: str = "./activation/unke/llama_3_8b_layer15_no_answer_last_rephrased.pt"
     save_path: str = "vanilla_unke"
-    similarity_threshold: float = 0.8  # threshold for using intervention vs vanilla model
+    similarity_threshold: float = 0.9  # threshold for using intervention vs vanilla model
     cluster_indices_path: str = "./cluster_index/unke/unke_v3_3_hac_maxsize8.json"
 
 
@@ -231,7 +231,7 @@ def evaluate_rep(config):
                 do_sample=False, 
                 eos_token_id=tokenizer.eos_token_id, 
                 early_stopping=True,
-                temperature=0.3
+                temperature=0.001
             )
             generated_text = tokenizer.decode(steered_response[0][len(test_prompt_tokens["input_ids"][0]):], skip_special_tokens=True)
             used_intervention = True
@@ -287,7 +287,7 @@ if __name__ == "__main__":
     parser.add_argument("--original_query_activation_path", type=str, default="./activation/unke_v3/llama_3_8b_layer15_no_answer_last_original.pt")
     parser.add_argument("--rephrased_query_activation_path", type=str, default="./activation/unke_v3/llama_3_8b_layer15_no_answer_last_rephrased.pt")
     parser.add_argument("--save_path", type=str, default="vanilla_unke")
-    parser.add_argument("--similarity_threshold", type=float, default=0.8)
+    parser.add_argument("--similarity_threshold", type=float, default=0.9)
     parser.add_argument("--cluster_indices_path", type=str, default="./cluster_index/unke/unke_v3_3_hac_maxsize8.json")
 
 
