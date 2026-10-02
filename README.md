@@ -6,12 +6,12 @@ Official implementation of **"Representation Interventions Enable Lifelong Knowl
 
 ## Overview
 
-**RILKE** (**R**epresentation **I**ntervention for **L**ifelong **K**nowledg**E** Control) enables efficient and accurate knowledge updates in large language models without costly retraining. The method operates within the model's representation space using two key components:
+**RILKE** (**R**epresentation **I**ntervention for **L**ifelong **K**nowledg**E** Control) updates knowledge in large language models efficiently and accurately, without retraining. It operates in the model's representation space through two components:
 
-- **Training**: Learns paraphrase-robust and edit-localized intervention modules that confine each update to a low-dimensional subspace, minimizing cross-edit interference.
-- **Inference**: A query-adaptive router dynamically selects the appropriate intervention module via activation-based cosine similarity retrieval.
+- **Training** learns paraphrase-robust, edit-localized intervention modules, each confined to a low-dimensional subspace to minimize cross-edit interference.
+- **Inference** uses a query-adaptive router that selects the right module via activation-based cosine similarity.
 
-RILKE supports both **individual training** (one module per edit) and **clustered training** (shared modules for semantically similar edits), and has been evaluated on LLaMA-3.1-8B-Instruct and Qwen2.5-7B-Instruct, achieving high edit success rates and strong generalization with modest memory overhead.
+RILKE supports **individual training** (one module per edit) and **clustered training** (one shared module per group of similar edits). Evaluated on LLaMA-3.1-8B-Instruct and Qwen2.5-7B-Instruct, it achieves high edit success and strong generalization with modest memory overhead.
 
 ## Installation
 
@@ -27,66 +27,48 @@ pip install -r requirements.txt
 
 ```
 RILKE/
-├── REFT_module.py           # Intervention modules (Vanilla, Explicit, Implicit, Adv_Explicit)
+├── REFT_module.py           # LoReFT intervention modules (Explicit)
 ├── REFT_trainer.py          # Custom trainers with consistency/adversarial losses
-├── utils.py                 # Weight loading, reinitialization, BERT score utilities
-├── store_activation.py      # Store per-sample activations at target layer
+├── utils.py                 # Weight loading, reinitialization, BERT-score utilities
+├── store_activation.py      # Store per-sample activations at the target layer
 ├── cluster_activation.py    # Cluster activations (KMeans, HAC)
-├── no_batched_train.py      # Individual training (one module per data point)
-├── train_test.py            # Unified train + test for individual setting
-├── test_single_rep.py       # Evaluation with activation-based retrieval (individual)
+├── no_batched_train.py      # Individual training (one module per edit)
+├── train_test.py            # Unified train + test for the individual setting
+├── test_single_rep.py       # Individual-setting evaluation with activation retrieval
 ├── test_rep.py              # Basic evaluation with pre-trained interventions
-├── train_cluster.py         # Clustered training (shared module per cluster)
-├── test_cluster_rep.py      # Evaluation with cluster-based retrieval
+├── train_cluster.py         # Clustered training (one shared module per cluster)
+├── test_cluster_rep.py      # Clustered-setting evaluation with activation retrieval
+├── configs/cluster.yaml     # Settings for the clustered pipeline
 ├── train_test_single.sh     # Example individual train+test script
 ├── run_cluster_pipeline.sh  # End-to-end clustered pipeline (store → cluster → train → eval)
 ├── src/dataset/             # UnKE dataset loader
 ├── datasets/UnKE/           # UnKE data (final_data_v2.json, final_data_v3.json)
-├── cluster_index/           # Precomputed cluster index for batched training
+├── cluster_index/           # Precomputed cluster index for clustered training
 └── result/                  # Example outputs
 ```
 
-## Quick Start
-
-The RILKE pipeline consists of three stages:
-
-1. **Store activations** at the target layer for each data point
-2. **Train** intervention modules (individually or per cluster)
-3. **Evaluate** using activation-based retrieval to select the appropriate module at inference
+Every workflow follows three stages: **store activations** → **train** intervention modules (individual or clustered) → **evaluate** via activation-based retrieval.
 
 ---
 
 ## Individual Training
 
-Individual training learns one lightweight intervention module per data point, then retrieves the best-matching module at test time via cosine similarity over stored activations.
+One lightweight module per edit; at test time, each query is routed to the most similar stored module by cosine similarity.
 
-### Step 1: Store Activations
-
-Extract hidden-state activations at the target layer for both original and paraphrased queries:
+**1. Store activations** for the original and paraphrased queries:
 
 ```bash
-# Original queries
-python store_activation.py \
-  --model_name meta-llama/Llama-3.1-8B-Instruct \
-  --dataset_name unke_v3 \
-  --data_src original
-
-# Paraphrased queries (for generalization evaluation)
-python store_activation.py \
-  --model_name meta-llama/Llama-3.1-8B-Instruct \
-  --dataset_name unke_v3 \
-  --data_src rephrased
+python store_activation.py --model_name meta-llama/Llama-3.1-8B-Instruct --dataset_name unke_v3 --data_src original
+python store_activation.py --model_name meta-llama/Llama-3.1-8B-Instruct --dataset_name unke_v3 --data_src rephrased
 ```
 
-### Step 2: Train
-
-Train one intervention module per data point. Each module is reinitialized before training on its corresponding sample, then saved for later retrieval.
+**2. Train** one module per edit (each is reinitialized, trained on its sample, and saved):
 
 ```bash
 python no_batched_train.py \
   --dataset unke_v3 \
-  --adv_train_method Explicit \
   --model_name meta-llama/Llama-3.1-8B-Instruct \
+  --adv_train_method Explicit \
   --rank 4 \
   --epochs 1000 \
   --learning_rate 1e-2 \
@@ -97,17 +79,7 @@ python no_batched_train.py \
   --wandb_project rilke_individual
 ```
 
-**Supported training methods** (`--adv_train_method`):
-| Method | Description |
-|---|---|
-| `Vanilla` | Standard LoReFT intervention |
-| `Explicit` | LoReFT with noise-based explicit regularization (Section 4.1) |
-| `Implicit` | LoReFT with consistency loss on rotated representations |
-| `Adv_Explicit` | LoReFT with adversarial perturbation training |
-
-### Step 3: Evaluate
-
-At inference, each query's activation is compared against stored training activations. The intervention module with the highest cosine similarity is loaded and applied:
+**3. Evaluate** (each query is routed to its most similar stored module):
 
 ```bash
 python test_single_rep.py \
@@ -123,9 +95,7 @@ python test_single_rep.py \
   --save_path individual_unke_results
 ```
 
-### Unified Train + Test
-
-`train_test.py` provides a single-command interface that trains all individual modules and then evaluates them:
+`train_test.py` runs training and evaluation in a single command (shown here for Qwen at layer 18):
 
 ```bash
 python train_test.py \
@@ -135,42 +105,34 @@ python train_test.py \
   --model_name Qwen/Qwen2.5-7B-Instruct \
   --rank 4 \
   --epochs 1000 \
+  --target_layer 18 \
   --save_weights_dir single_unke_qwen_layer18 \
   --activation_path ./activation/unke_v3/qwen_2_5_7b_layer18_no_answer_last_original.pt \
   --original_query_activation_path ./activation/unke_v3/qwen_2_5_7b_layer18_no_answer_last_original.pt \
-  --rephrased_query_activation_path ./activation/unke_v3/qwen_2_5_7b_layer18_no_answer_last_rephrased.pt \
-  --target_layer 18
+  --rephrased_query_activation_path ./activation/unke_v3/qwen_2_5_7b_layer18_no_answer_last_rephrased.pt
 ```
 
 ---
 
 ## Clustered Training
 
-Clustered training groups semantically similar data points and trains a shared intervention module per cluster, reducing storage while maintaining performance.
+Groups semantically similar edits and trains one shared module per cluster, reducing storage while preserving performance. Run everything with `bash run_cluster_pipeline.sh`, or follow the steps below. All settings live in [`configs/cluster.yaml`](configs/cluster.yaml); any CLI flag overrides the file.
 
-> **End-to-end:** `bash run_cluster_pipeline.sh` runs the four stages below in order (store → cluster → train → evaluate). The clustered scripts are configured for LLaMA-3.1-8B-Instruct at layer 15 on UnKE-v3; tune `RANK`, `EPOCHS`, `NUM_SAMPLES`, `ADV_METHOD`, and `SAVE_WEIGHTS_DIR` via environment variables.
-
-### Step 1: Cluster Activations
-
-Group stored activations into size-bounded clusters using Hierarchical Agglomerative Clustering (HAC) with a cosine similarity threshold:
+**1. Cluster activations** with size-bounded Hierarchical Agglomerative Clustering (HAC):
 
 ```bash
-python cluster_activation.py
+python cluster_activation.py   # → cluster_index/unke/unke_v3_3_hac_maxsize8.json
 ```
 
-Output: `cluster_index/unke/unke_v3_3_hac_maxsize8.json`
+Defaults: cosine threshold `tau=0.9` and `max_cluster_size=8`; oversized clusters are split recursively.
 
-The clustering uses `tau=0.9` (cosine similarity threshold) and `max_cluster_size=8` by default. Large clusters are recursively split to respect the size bound.
-
-### Step 2: Train
-
-All clustered-training settings live in [`configs/cluster.yaml`](configs/cluster.yaml) — edit them there instead of passing long flag lists. Any flag you also pass on the command line overrides the file.
+**2. Train**:
 
 ```bash
 python train_cluster.py --config configs/cluster.yaml
 ```
 
-### Step 3: Evaluate
+**3. Evaluate**:
 
 ```bash
 python test_cluster_rep.py --config configs/cluster.yaml
@@ -180,8 +142,8 @@ python test_cluster_rep.py --config configs/cluster.yaml
 
 ## Evaluation Metrics
 
-- **ROUGE-L** (recall): Lexical overlap between generated and reference answers
-- **BERT Score** (cosine similarity): Semantic similarity using sentence-transformers (`all-MiniLM-L6-v2`)
+- **ROUGE-L** (recall) — lexical overlap with the reference answer.
+- **BERT Score** — semantic similarity via sentence-transformers (`all-MiniLM-L6-v2`).
 
 ---
 
@@ -222,9 +184,8 @@ If you find this work useful, please cite:
 
 ## Acknowledgements
 
-This project builds on [pyreft](https://github.com/stanfordnlp/pyreft). We thank the authors for their open-source contributions.
+Built on [pyreft](https://github.com/stanfordnlp/pyreft). We thank the authors for their open-source work.
 
 ## Contact
-If you have any questions, suggestions, or bug reports, please contact
 
-xuyuan.liu.gr@dartmouth.edu
+Questions or suggestions reports: xuyuan.liu.gr@dartmouth.edu
