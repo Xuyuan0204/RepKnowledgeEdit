@@ -1,6 +1,5 @@
 # RILKE: Representation Interventions Enable Lifelong Knowledge Memory Control in LLMs
 
-[![arXiv](https://img.shields.io/badge/arXiv-2511.20892-b31b1b.svg)](https://arxiv.org/abs/2511.20892)
 [![ACL 2026](https://img.shields.io/badge/ACL%202026-Oral-blue.svg)](https://arxiv.org/abs/2511.20892)
 
 Official implementation of **"Representation Interventions Enable Lifelong Knowledge Memory Control in LLMs"** (ACL 2026, Oral).
@@ -12,7 +11,7 @@ Official implementation of **"Representation Interventions Enable Lifelong Knowl
 - **Training**: Learns paraphrase-robust and edit-localized intervention modules that confine each update to a low-dimensional subspace, minimizing cross-edit interference.
 - **Inference**: A query-adaptive router dynamically selects the appropriate intervention module via activation-based cosine similarity retrieval.
 
-RILKE supports both **individual training** (one module per edit) and **clustered training** (shared modules for semantically similar edits), and has been evaluated on LLaMA-3.1-8B-Instruct and Qwen2.5-7B-Instruct, achieving high edit success rates and strong generalization while preserving general utility (MMLU) with modest memory overhead.
+RILKE supports both **individual training** (one module per edit) and **clustered training** (shared modules for semantically similar edits), and has been evaluated on LLaMA-3.1-8B-Instruct and Qwen2.5-7B-Instruct, achieving high edit success rates and strong generalization with modest memory overhead.
 
 ## Installation
 
@@ -39,13 +38,11 @@ RILKE/
 ├── test_rep.py              # Basic evaluation with pre-trained interventions
 ├── train_cluster.py         # Clustered training (shared module per cluster)
 ├── test_cluster_rep.py      # Evaluation with cluster-based retrieval
-├── store_activation_mmlu.py # Store MMLU activations for locality evaluation
-├── mmlu_eval.py             # MMLU evaluation (individual setting)
-├── mmlu_eval_cluster.py     # MMLU evaluation (clustered setting)
-├── train_test_single.sh     # Example training script
-├── src/dataset/             # Dataset loaders (UnKE, AnyEdit, CounterFact)
-├── datasets/                # Raw data files
-├── Figure/                  # Paper figures
+├── train_test_single.sh     # Example individual train+test script
+├── run_cluster_pipeline.sh  # End-to-end clustered pipeline (store → cluster → train → eval)
+├── src/dataset/             # UnKE dataset loader
+├── datasets/UnKE/           # UnKE data (final_data_v2.json, final_data_v3.json)
+├── cluster_index/           # Precomputed cluster index for batched training
 └── result/                  # Example outputs
 ```
 
@@ -167,38 +164,16 @@ The clustering uses `tau=0.9` (cosine similarity threshold) and `max_cluster_siz
 
 ### Step 2: Train
 
+All clustered-training settings live in [`configs/cluster.yaml`](configs/cluster.yaml) — edit them there instead of passing long flag lists. Any flag you also pass on the command line overrides the file.
+
 ```bash
-python train_cluster.py \
-  --dataset unke_v3 \
-  --adv_train_method Explicit \
-  --learning_rate 1e-2 \
-  --drop_out 0.01 \
-  --noise_std 0.02 \
-  --lambda_consistency 0.001 \
-  --batch_size 8 \
-  --rank 4 \
-  --epochs 1000 \
-  --cluster_method hac \
-  --save_weights_dir unke_explicit_llama_cluster \
-  --record True \
-  --wandb_project rilke_cluster
+python train_cluster.py --config configs/cluster.yaml
 ```
 
 ### Step 3: Evaluate
 
 ```bash
-python test_cluster_rep.py \
-  --dataset unke_v3 \
-  --model_name meta-llama/Llama-3.1-8B-Instruct \
-  --adapter_weights_dir ./Stored_weights/unke_explicit_llama_cluster \
-  --activation_path ./activation/unke_v3/llama_3_8b_layer15_no_answer_last_original.pt \
-  --original_query_activation_path ./activation/unke_v3/llama_3_8b_layer15_no_answer_last_original.pt \
-  --rephrased_query_activation_path ./activation/unke_v3/llama_3_8b_layer15_no_answer_last_rephrased.pt \
-  --target_layer 15 \
-  --rank 4 \
-  --num_samples 1000 \
-  --cluster_indices_path ./cluster_index/unke/unke_v3_3_hac_maxsize8.json \
-  --save_path cluster_unke_results
+python test_cluster_rep.py --config configs/cluster.yaml
 ```
 
 ---
@@ -207,7 +182,6 @@ python test_cluster_rep.py \
 
 - **ROUGE-L** (recall): Lexical overlap between generated and reference answers
 - **BERT Score** (cosine similarity): Semantic similarity using sentence-transformers (`all-MiniLM-L6-v2`)
-- **MMLU Accuracy**: Multiple-choice accuracy on the MMLU benchmark (general utility)
 
 ---
 
@@ -250,6 +224,7 @@ If you find this work useful, please cite:
 
 This project builds on [pyreft](https://github.com/stanfordnlp/pyreft). We thank the authors for their open-source contributions.
 
-## License
+## Contact
+If you have any questions, suggestions, or bug reports, please contact
 
-This project is only for research purposes. Please refer to the model licenses of [LLaMA](https://ai.meta.com/llama/license/) and [Qwen](https://huggingface.co/Qwen/Qwen2.5-7B-Instruct) for model usage terms.
+xuyuan.liu.gr@dartmouth.edu

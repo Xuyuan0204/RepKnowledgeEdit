@@ -81,6 +81,9 @@ def get_config(args):
     config.cluster_method = args.cluster_method
     config.cluster_indices_path = args.cluster_indices_path
     config.save_weights_dir = args.save_weights_dir
+    config.attn_impl = args.attn_impl
+    config.model_name = args.model_name
+    config.target_layer = args.target_layer
     return config
 
 
@@ -93,7 +96,7 @@ def Reft_train(config):
 
     tokenizer = transformers.AutoTokenizer.from_pretrained(
         config.model_name, model_max_length=512, 
-        padding_side="right", use_fast=False
+        padding_side="right", use_fast=True
         
         )
 
@@ -114,7 +117,7 @@ def Reft_train(config):
 
 
     model = transformers.AutoModelForCausalLM.from_pretrained(
-        config.model_name, torch_dtype=torch.bfloat16, device_map=device,attn_implementation="flash_attention_2",low_cpu_mem_usage=True,)
+        config.model_name, torch_dtype=torch.bfloat16, device_map=device,attn_implementation=config.attn_impl,low_cpu_mem_usage=True,)
 
 
     if config.record:
@@ -469,12 +472,17 @@ def Reft_train(config):
 
 
 if __name__ == "__main__":
+    import sys
+    from utils import yaml_defaults_from_argv
+
     parser = argparse.ArgumentParser()
+    parser.add_argument("--config", type=str, default=None, help="YAML config; its values become defaults, any CLI flag overrides")
     parser.add_argument("--num_samples", type=int, default=None)
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--record", type=bool, default=False)
     parser.add_argument("--wandb_project", type=str, default="reft_adv_batch")
     parser.add_argument("--dataset", type=str, default="unke_v3")
+    parser.add_argument("--target_layer", type=int, default=15)
     parser.add_argument("--noise_std", type=float, default=0.02)
     parser.add_argument("--drop_out", type=float, default=0.05)
     parser.add_argument("--adv_train_method", type=str, default="Adv")
@@ -489,7 +497,17 @@ if __name__ == "__main__":
     parser.add_argument("--cluster_method", type=str, default="kmeans")
     parser.add_argument("--cluster_indices_path", type=str, default="./cluster_index/unke/unke_v3_3_hac_maxsize8.json")
     parser.add_argument("--save_weights_dir", type=str, default=None)
-    
+    parser.add_argument("--attn_impl", type=str, default="flash_attention_2", help="flash_attention_2 (default) or sdpa/eager")
+    parser.add_argument("--model_name", type=str, default="meta-llama/Llama-3.1-8B-Instruct")
+
+    _cfg = yaml_defaults_from_argv(sys.argv)
+    if _cfg:
+        _valid = {a.dest for a in parser._actions}
+        _unknown = [k for k in _cfg if k not in _valid]
+        if _unknown:
+            print(f"[config] ignoring keys not used by train_cluster: {_unknown}")
+        parser.set_defaults(**{k: v for k, v in _cfg.items() if k in _valid})
+
     args = parser.parse_args()
     config = get_config(args)
     Reft_train(config)

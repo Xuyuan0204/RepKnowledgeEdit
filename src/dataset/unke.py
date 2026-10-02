@@ -52,21 +52,6 @@ class UnkeForDirectOpt:
 
         return edit_dataset
 
-    def get_dataset_mmlu(self):
-        raw_dataset = []
-        with open("datasets/UnKE/mmlu_shot.jsonl", "r") as f:
-            for line in f:
-                raw_dataset.append(json.loads(line.strip()))
-
-        edit_dict = {"mmlu_questions": [], "mmlu_answer": [], "mmlu_choices": []}
-        for item in raw_dataset:
-            edit_dict["mmlu_questions"].append(item["question"])
-            edit_dict["mmlu_answer"].append(item["answer"])
-            edit_dict["mmlu_choices"].append(item["choices"])
-        edit_dataset = Dataset.from_dict(edit_dict)
-
-        return edit_dataset
-
     # def __preprocess__(self, tokenizer):
 
     #     def preprocess_dataset(examples):

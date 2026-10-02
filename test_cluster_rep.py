@@ -96,7 +96,7 @@ def evaluate_rep(config):
     
     scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=True)
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    if config.dataset == "unke_v3":
+    if config.dataset in ("unke", "unke_v3"):
         edit_dataset = UnkeForDirectOpt().get_dataset_v3()
     elif config.dataset == "anyedit":
         edit_dataset = AnyEditForDirectOpt().get_dataset()
@@ -153,7 +153,7 @@ def evaluate_rep(config):
     model_max_length = 2048
     tokenizer = transformers.AutoTokenizer.from_pretrained(
         config.model_name, model_max_length=model_max_length, 
-        padding_side="right", use_fast=False)
+        padding_side="right", use_fast=True)
     tokenizer.pad_token = tokenizer.unk_token
 
     reft_config = ReftConfig(representations={
@@ -274,7 +274,11 @@ def evaluate_rep(config):
     print(f"Results saved to results/{config.save_path}_{config.num_samples}_cluster.jsonl")
 
 if __name__ == "__main__":
+    import sys
+    from utils import yaml_defaults_from_argv
+
     parser = argparse.ArgumentParser()
+    parser.add_argument("--config", type=str, default=None, help="YAML config; its values become defaults, any CLI flag overrides")
     parser.add_argument("--dataset", type=str, default="unke_v3")
     parser.add_argument("--target_layer", type=int, default=15)
     parser.add_argument("--model_name", type=str, default="meta-llama/Llama-3.1-8B-Instruct")
@@ -287,6 +291,12 @@ if __name__ == "__main__":
     parser.add_argument("--rephrased_query_activation_path", type=str, default="./activation/unke/llama_3_8b_layer15_no_answer_last_rephrased.pt")
     parser.add_argument("--save_path", type=str, default="vanilla_unke")
     parser.add_argument("--cluster_indices_path", type=str, default="./cluster_index/unke/unke_v3_3_hac_maxsize8.json")
+
+    _cfg = yaml_defaults_from_argv(sys.argv)
+    if _cfg:
+        _valid = {a.dest for a in parser._actions}
+        parser.set_defaults(**{k: v for k, v in _cfg.items() if k in _valid})
+
     args = parser.parse_args()
 
     config = ReftHyperparameters()

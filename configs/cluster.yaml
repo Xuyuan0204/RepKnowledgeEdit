@@ -1,0 +1,37 @@
+# RILKE clustered-training config (LLaMA-3.1-8B-Instruct / UnKE-v3).
+# Used by train_cluster.py and test_cluster_rep.py via --config.
+# Values here are applied as defaults; any flag you also pass on the CLI
+# overrides the corresponding value below.
+
+# model / data
+model_name: meta-llama/Llama-3.1-8B-Instruct
+dataset: unke_v3
+target_layer: 15
+
+# intervention / training (paper Table 9)
+rank: 4
+learning_rate: 0.01
+noise_std: 0.02
+drop_out: 0.05
+lambda_consistency: 0.001
+epochs: 1000
+batch_size: 8
+adv_train_method: Explicit
+attn_impl: sdpa            # flash_attention_2 is not installed on this machine
+
+# clustering / routing
+cluster_method: hac
+cluster_indices_path: ./cluster_index/unke/unke_v3_3_hac_maxsize8.json
+num_samples: 1000
+
+# bookkeeping
+save_weights_dir: unke_explicit_llama_cluster
+record: true
+wandb_project: rilke_cluster
+
+# evaluation (test_cluster_rep.py)
+adapter_weights_dir: ./Stored_weights/unke_explicit_llama_cluster
+activation_path: ./activation/unke_v3/llama_3_8b_layer15_no_answer_last_original.pt
+original_query_activation_path: ./activation/unke_v3/llama_3_8b_layer15_no_answer_last_original.pt
+rephrased_query_activation_path: ./activation/unke_v3/llama_3_8b_layer15_no_answer_last_rephrased.pt
+save_path: cluster_unke_v3_results

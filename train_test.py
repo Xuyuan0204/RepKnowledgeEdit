@@ -34,8 +34,6 @@ from REFT_trainer import ReftTrainerImplicit, ReftTrainerAdv
 from utils import reinit_intervention_weights
 import argparse
 from itertools import islice
-from src.dataset.wiki import WikiForDirectOpt
-from src.dataset.anyedit import AnyEditForDirectOpt
 import wandb
 from utils import load_intervention_weights_consreft, load_intervention_weights_loreft
 from src.dataset.unke import UnkeForDirectOpt
@@ -152,6 +150,7 @@ def get_config(args):
     config.original_query_activation_path = args.original_query_activation_path
     config.rephrased_query_activation_path = args.rephrased_query_activation_path
     config.model_name = args.model_name
+    config.attn_impl = args.attn_impl
     return config
 
 
@@ -164,7 +163,7 @@ def Reft_train(config):
     weights_store="./Stored_weights"
     tokenizer = transformers.AutoTokenizer.from_pretrained(
         config.model_name, model_max_length=512, 
-        padding_side="right", use_fast=False
+        padding_side="right", use_fast=True
         
         )
 
@@ -172,13 +171,8 @@ def Reft_train(config):
         edit_dataset = UnkeForDirectOpt().get_dataset()
     elif config.dataset == "unke_v3":
         edit_dataset = UnkeForDirectOpt().get_dataset_v3()
-    elif config.dataset == "wiki":
-        edit_dataset = WikiForDirectOpt().get_dataset()
     elif config.dataset == "anyedit":
         edit_dataset = AnyEditForDirectOpt().get_dataset()
-    elif config.dataset == "tofu":
-        edit_data = json.load(open("datasets/tofu/tofu_last_400_edit_data.json"))
-        edit_dataset = Dataset.from_dict(edit_data)
 
     # Set num_samples to full dataset size for batch training
     if args.num_samples is not None:
@@ -197,7 +191,7 @@ def Reft_train(config):
 
 
     model = transformers.AutoModelForCausalLM.from_pretrained(
-        config.model_name, torch_dtype=torch.bfloat16, device_map=device,attn_implementation="flash_attention_2",low_cpu_mem_usage=True,)
+        config.model_name, torch_dtype=torch.bfloat16, device_map=device,attn_implementation=config.attn_impl,low_cpu_mem_usage=True,)
 
 
     if config.record:
@@ -414,10 +408,10 @@ def Reft_test(config):
 
     if config.dataset == "unke":
         edit_dataset = UnkeForDirectOpt().get_dataset_v3()
-    elif config.dataset == "anyedit":
-        edit_dataset = AnyEditForDirectOpt().get_dataset()
     elif config.dataset == "unke_v3":
         edit_dataset = UnkeForDirectOpt().get_dataset_v3()
+    elif config.dataset == "anyedit":
+        edit_dataset = AnyEditForDirectOpt().get_dataset()
     if config.num_samples is None:
         config.num_samples = len(edit_dataset)
 
@@ -456,7 +450,7 @@ def Reft_test(config):
     model_max_length = 2048
     tokenizer = transformers.AutoTokenizer.from_pretrained(
         config.model_name, model_max_length=model_max_length, 
-        padding_side="right", use_fast=False)
+        padding_side="right", use_fast=True)
     tokenizer.pad_token = tokenizer.unk_token
 
     # Initialize ReFT model structure (without loading specific weights yet)
@@ -618,8 +612,8 @@ if __name__ == "__main__":
     parser.add_argument("--activation_path", type=str, default="./activation/unke/llama_3_8b_layer15_no_answer_last_original.pt")
     parser.add_argument("--original_query_activation_path", type=str, default="./activation/unke/llama_3_8b_layer15_no_answer_last_original.pt")
     parser.add_argument("--rephrased_query_activation_path", type=str, default="./activation/unke/llama_3_8b_layer15_no_answer_last_rephrased.pt")
-    parser.add_argument("--mmlu", action="store_true", default=False)
     parser.add_argument("--model_name", type=str, default="meta-llama/Llama-3.1-8B-Instruct")
+    parser.add_argument("--attn_impl", type=str, default="flash_attention_2", help="flash_attention_2 (default) or sdpa/eager")
     args = parser.parse_args()
     config = get_config(args)
     Reft_train(config)

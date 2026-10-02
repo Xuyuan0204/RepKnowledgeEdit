@@ -33,7 +33,9 @@ def load_intervention_weights_loreft(reft_model, model_path,device,reft_config):
         if file.endswith(".pt") and 'pytorch_model' not in file: 
             checkpoint_path = os.path.join(model_path, file)
             state_dict = torch.load(checkpoint_path, map_location=device)
-            module_key= f"layer_{reft_config.representations[0].layer}_comp_block_output_unit_pos_nunit_1#0"
+            # Use the model's actual intervention key (format differs by component:
+            # "layer_L_comp_block_output..." for LLaMA vs "comp_model_layers[L]_output..." for Qwen).
+            module_key = list(reft_model.interventions.keys())[0]
             blk = reft_model.interventions[module_key].rotate_layer
            
             if is_parametrized(blk, "weight"):
@@ -55,6 +57,30 @@ def load_intervention_weights_loreft(reft_model, model_path,device,reft_config):
             print(f"Loaded weights for {module_key}.", f"shape: {reft_model.interventions[module_key].rotate_layer.weight.shape}")
         
     return reft_model
+
+
+def yaml_defaults_from_argv(argv):
+    """If --config <path.yaml> is in argv, load it and return a dict of defaults.
+
+    Values are applied as argparse defaults (via parser.set_defaults), so any
+    flag also passed on the command line still overrides the YAML. Returns {}
+    when no --config is given.
+    """
+    import os
+    import yaml
+    path = None
+    for i, a in enumerate(argv):
+        if a == "--config" and i + 1 < len(argv):
+            path = argv[i + 1]
+        elif a.startswith("--config="):
+            path = a.split("=", 1)[1]
+    if not path:
+        return {}
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"--config file not found: {path}")
+    with open(path) as f:
+        return yaml.safe_load(f) or {}
+
 
 def reinit_intervention_weights(reft_model):
     """

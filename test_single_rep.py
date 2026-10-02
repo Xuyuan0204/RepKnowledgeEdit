@@ -99,7 +99,7 @@ def evaluate_rep(config):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    if config.dataset == "unke":
+    if config.dataset in ("unke", "unke_v3"):
         edit_dataset = UnkeForDirectOpt().get_dataset_v3()
     elif config.dataset == "anyedit":
         edit_dataset = AnyEditForDirectOpt().get_dataset()
@@ -142,7 +142,7 @@ def evaluate_rep(config):
     model_max_length = 2048
     tokenizer = transformers.AutoTokenizer.from_pretrained(
         config.model_name, model_max_length=model_max_length, 
-        padding_side="right", use_fast=False)
+        padding_side="right", use_fast=True)
     tokenizer.pad_token = tokenizer.unk_token
     print("Initializing ReFT model structure...")
     reft_config = ReftConfig(representations={

@@ -37,37 +37,52 @@ echo "============================================"
 
 echo ""
 echo "[Step 1/5] Storing activations (original queries)..."
-python store_activation.py \
-  --model_name "$MODEL_NAME" \
-  --dataset_name "$DATASET" \
-  --target_layer "$TARGET_LAYER" \
-  --data_src original
+if [ -f "$ACTIVATION_ORIG" ]; then
+  echo "  exists, skipping: $ACTIVATION_ORIG"
+else
+  python store_activation.py \
+    --model_name "$MODEL_NAME" \
+    --dataset_name "$DATASET" \
+    --target_layer "$TARGET_LAYER" \
+    --data_src original
+fi
 
 echo ""
 echo "[Step 2/5] Storing activations (rephrased queries)..."
-python store_activation.py \
-  --model_name "$MODEL_NAME" \
-  --dataset_name "$DATASET" \
-  --target_layer "$TARGET_LAYER" \
-  --data_src rephrased
+if [ -f "$ACTIVATION_REPHRASE" ]; then
+  echo "  exists, skipping: $ACTIVATION_REPHRASE"
+else
+  python store_activation.py \
+    --model_name "$MODEL_NAME" \
+    --dataset_name "$DATASET" \
+    --target_layer "$TARGET_LAYER" \
+    --data_src rephrased
+fi
 
 echo ""
 echo "[Step 3/5] Clustering activations (HAC) -> ${CLUSTER_INDEX}..."
-python cluster_activation.py
+if [ -f "$CLUSTER_INDEX" ]; then
+  echo "  exists, skipping: $CLUSTER_INDEX"
+else
+  python cluster_activation.py
+fi
 
 echo ""
 echo "[Step 4/5] Training cluster-based intervention modules..."
+CUDA_VISIBLE_DEVICES=2 \
 python train_cluster.py \
   --dataset "$DATASET" \
+  --model_name "$MODEL_NAME" \
   --adv_train_method "$ADV_METHOD" \
-  --learning_rate 2e-2 \
-  --drop_out 0.01 \
-  --noise_std 0.005 \
+  --learning_rate 1e-2 \
+  --drop_out 0.05 \
+  --noise_std 0.02 \
   --lambda_consistency 0.001 \
   --batch_size 8 \
   --rank "$RANK" \
   --epochs "$EPOCHS" \
   --cluster_method hac \
+  --attn_impl sdpa \
   --cluster_indices_path "$CLUSTER_INDEX" \
   --save_weights_dir "$SAVE_WEIGHTS_DIR" \
   --record True \
@@ -75,6 +90,7 @@ python train_cluster.py \
 
 echo ""
 echo "[Step 5/5] Evaluating with cluster-based retrieval..."
+CUDA_VISIBLE_DEVICES=2 \
 python test_cluster_rep.py \
   --dataset "$DATASET" \
   --model_name "$MODEL_NAME" \

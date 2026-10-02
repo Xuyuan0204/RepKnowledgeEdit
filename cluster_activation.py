@@ -19,8 +19,6 @@ from torch import Tensor
 import os
 from sklearn.cluster import KMeans, AgglomerativeClustering, DBSCAN, OPTICS
 from src.dataset.unke import UnkeForDirectOpt
-from src.dataset.wiki import WikiForDirectOpt
-from src.dataset.akew import CounterFactForDirectOpt
 from src.dataset.anyedit import AnyEditForDirectOpt
 
 from k_means_constrained import KMeansConstrained
@@ -38,39 +36,7 @@ def preprocess_only_question(example,tokenizer,dataset_name):
         "attention_mask": [],
         "label": [],
     }
-    if dataset_name == "counterfact":
-      
-        for i in range(len(example["question"])):
-            
-            question = example["question"][i]
-            
-            
-            messages = [
-                    {"role": "user", "content": question}
-                ]
-                
-                
-            if hasattr(tokenizer, 'apply_chat_template') and tokenizer.chat_template is not None:
-                    # Get just the user message part with generation prompt
-                formatted_text = tokenizer.apply_chat_template(
-                        messages, 
-                        tokenize=False, 
-                        add_generation_prompt=True  
-                    )
-            else:
-                formatted_text = f"User: {question}"
-                
-            tokenized = tokenizer(
-                    formatted_text,
-                    padding=False,
-                    truncation=True,
-                )
-            results["input_ids"].append(tokenized.input_ids)
-            results["attention_mask"].append(tokenized.attention_mask)
-            results["label"].append(1)
-        return results
-    
-    elif dataset_name == "unke" or dataset_name == "unke_v3" or dataset_name == "wiki" or dataset_name == "anyedit":
+    if dataset_name in ("unke", "unke_v3", "anyedit"):
         for i in range(len(example["question"])):
             question = example["question"][i]
             messages = [
@@ -160,7 +126,7 @@ class GetHookedValue:
     
 
 
-def cluster_activations(dataset_name="wiki",method="cluster", only_question=False, model_name="meta-llama/Llama-3.1-8B-Instruct"):
+def cluster_activations(dataset_name="unke_v3",method="hac", only_question=True, model_name="meta-llama/Llama-3.1-8B-Instruct"):
 
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -168,10 +134,6 @@ def cluster_activations(dataset_name="wiki",method="cluster", only_question=Fals
         edit_dataset = UnkeForDirectOpt().get_dataset()
     elif dataset_name == "unke_v3":
         edit_dataset = UnkeForDirectOpt().get_dataset_v3()
-    elif dataset_name == "wiki":
-        edit_dataset = WikiForDirectOpt().get_dataset()
-    elif dataset_name == "counterfact":
-        edit_dataset = CounterFactForDirectOpt().get_dataset()
     elif dataset_name == "anyedit":
         edit_dataset = AnyEditForDirectOpt().get_dataset()
 

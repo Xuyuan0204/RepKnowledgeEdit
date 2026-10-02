@@ -52,11 +52,8 @@ def evaluate_rep(config):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    if config.dataset == "unke":
-        edit_dataset = UnkeForDirectOpt().get_dataset()
-    elif config.dataset == "tofu":
-        edit_data = json.load(open("datasets/tofu/tofu_last_400_edit_data.json"))
-        edit_dataset = Dataset.from_dict(edit_data)
+    if config.dataset in ("unke", "unke_v3"):
+        edit_dataset = UnkeForDirectOpt().get_dataset_v3()
 
     data_samples = edit_dataset.select(range(config.num_samples))
     data_questions = [sample["question"] for sample in data_samples]
@@ -70,7 +67,7 @@ def evaluate_rep(config):
     model_max_length = 2048
     tokenizer = transformers.AutoTokenizer.from_pretrained(
         config.model_name, model_max_length=model_max_length, 
-        padding_side="right", use_fast=False)
+        padding_side="right", use_fast=True)
     tokenizer.pad_token = tokenizer.unk_token
 
     print(f"Loading pre-trained ReFT model from {config.model_path}...")
@@ -168,7 +165,7 @@ def evaluate_rep(config):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="tofu")
+    parser.add_argument("--dataset", type=str, default="unke_v3")
     parser.add_argument("--model_path", type=str, default="./reft_model/intervenable_model")
     parser.add_argument("--target_layer", type=int, default=15)
     parser.add_argument("--model_name", type=str, default="meta-llama/Llama-2-7b-chat-hf")
