@@ -35,7 +35,6 @@ RILKE/
 ├── no_batched_train.py      # Individual training (one module per edit)
 ├── train_test.py            # Unified train + test for the individual setting
 ├── test_single_rep.py       # Individual-setting evaluation with activation retrieval
-├── test_rep.py              # Basic evaluation with pre-trained interventions
 ├── train_cluster.py         # Clustered training (one shared module per cluster)
 ├── test_cluster_rep.py      # Clustered-setting evaluation with activation retrieval
 ├── configs/cluster.yaml     # Settings for the clustered pipeline

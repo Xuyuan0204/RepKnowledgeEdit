@@ -27,7 +27,7 @@ from pyreft import (
     LoreftIntervention
 )
 import wandb
-from utils import load_intervention_weights_consreft, load_intervention_weights_loreft
+from utils import load_intervention_weights_loreft
 from src.dataset.unke import UnkeForDirectOpt
 from src.dataset.anyedit import AnyEditForDirectOpt
 import argparse

@@ -35,7 +35,7 @@ from utils import reinit_intervention_weights
 import argparse
 from itertools import islice
 import wandb
-from utils import load_intervention_weights_consreft, load_intervention_weights_loreft
+from utils import load_intervention_weights_loreft
 from src.dataset.unke import UnkeForDirectOpt
 from src.dataset.anyedit import AnyEditForDirectOpt
 import argparse

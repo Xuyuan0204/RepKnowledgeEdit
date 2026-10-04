@@ -5,27 +5,6 @@ from sentence_transformers import SentenceTransformer, util
 from tqdm import tqdm
 from torch.nn.utils.parametrize import is_parametrized, remove_parametrizations
 import numpy as np
-def load_intervention_weights_consreft(reft_model, model_path,device):
-    file_list=os.listdir(model_path)
-    for file in file_list:
-        if file.endswith(".bin"):
-            checkpoint_path = os.path.join(model_path, file)
-            state_dict = torch.load(checkpoint_path, map_location=device)
-            
-            
-            for key, value in state_dict.items():
-
-                weight_key=file.split(".")[0].removeprefix('intkey_')
-               
-                if reft_model.interventions.state_dict()[weight_key+"."+key].shape == value.shape:
-                    reft_model.interventions.state_dict()[weight_key+"."+key].data.copy_(value)
-                    print(f"Loaded weights for {weight_key}.", f"shape: {reft_model.interventions.state_dict()[weight_key+'.'+key].shape}")
-                else:
-                    raise ValueError(f"Skipping {key} because shape mismatch: {reft_model.state_dict()[key].shape} != {value.shape}")
-               
-    return reft_model
-
-
 def load_intervention_weights_loreft(reft_model, model_path,device,reft_config):
     file_list=os.listdir(model_path)
  
